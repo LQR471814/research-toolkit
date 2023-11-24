@@ -78,7 +78,7 @@ func (e Extractor) Extract(url *url.URL) ([]mdrender.Node, AXNode, error) {
 				return err
 			}
 
-			mdTree = MarkdownFromAXTree(pageCtx, axTree)
+			mdTree = MarkdownFromAXTree(pageCtx, axTree, url)
 
 			return nil
 		}),
@@ -107,13 +107,16 @@ func filterParagraphElements(nodes []mdrender.Node) []mdrender.ParagraphElement 
 }
 
 type traversalState struct {
+	baseUrl        *url.URL
 	underMain      bool
 	underParagraph bool
 	listItemDepth  int
 }
 
-func MarkdownFromAXTree(pageCtx context.Context, root AXNode) []mdrender.Node {
-	return convertMdFromAx(pageCtx, root, traversalState{})
+func MarkdownFromAXTree(pageCtx context.Context, root AXNode, baseUrl *url.URL) []mdrender.Node {
+	return convertMdFromAx(pageCtx, root, traversalState{
+		baseUrl: baseUrl,
+	})
 }
 
 func convertMdFromAx(
@@ -264,9 +267,17 @@ func convertMdFromAx(
 			return []mdrender.Node{}
 		}
 
+		linkUrl := href
+		parsed, err := url.Parse(href)
+		if err != nil {
+			slog.Warn("could not parse href", "href", href)
+		} else if state.baseUrl != nil {
+			linkUrl = state.baseUrl.ResolveReference(parsed).String()
+		}
+
 		return []mdrender.Node{
 			mdrender.Link{
-				URL: href,
+				URL: linkUrl,
 				Title: mdrender.Paragraph{
 					Elements: elements,
 				},
