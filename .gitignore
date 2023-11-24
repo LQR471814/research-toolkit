@@ -1,0 +1,8 @@
+chrome-data
+ublock
+
+*.json
+*.log
+*.txt
+*.db
+extracted.md
