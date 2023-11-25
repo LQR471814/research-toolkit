@@ -2,16 +2,19 @@ package extract
 
 // Extract the first "main" node from the tree.
 func ExtractMain(root AXNode) (AXNode, bool) {
-	if string(root.Role) == "main" {
-		return root, true
-	}
+	queue := []AXNode{root}
 
-	for _, child := range root.Children {
-		main, ok := ExtractMain(child)
-		if !ok {
-			continue
+	for len(queue) > 0 {
+		lowerQueue := []AXNode{}
+
+		for _, node := range queue {
+			if string(node.Role) == "main" {
+				return node, true
+			}
+			lowerQueue = append(lowerQueue, node.Children...)
 		}
-		return main, true
+
+		queue = lowerQueue
 	}
 
 	return AXNode{}, false
