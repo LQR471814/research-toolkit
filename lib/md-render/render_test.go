@@ -125,6 +125,34 @@ func TestRender(t *testing.T) {
 						},
 					},
 				},
+				Table{
+					Rows: [][]CanBeDecorated{
+						{
+							PlainText{"header 1"},
+							PlainText{"header 2"},
+							PlainText{"header 3"},
+						},
+						{
+							Paragraph{
+								Elements: []ParagraphElement{
+									InlineCode{"wow i love coding"},
+									LineBreak{},
+									Link{
+										URL:   "https://github.com",
+										Title: PlainText{"Find the best codes here"},
+									},
+								},
+							},
+							PlainText{"body 2"},
+						},
+						{
+							PlainText{"body 4"},
+							PlainText{"body 4"},
+							PlainText{"body 4"},
+							PlainText{"body 4"},
+						},
+					},
+				},
 			},
 		},
 	}

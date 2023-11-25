@@ -1,5 +1,10 @@
 package utils
 
+import (
+	"strings"
+	"unicode"
+)
+
 type indexedPair[T any] struct {
 	index int
 	value T
@@ -21,4 +26,16 @@ func ParallelMap[I, O any](inputs []I, mapper func(input I) O) []O {
 		results[pair.index] = pair.value
 	}
 	return results
+}
+
+func mapInvisible(r rune) rune {
+	if unicode.IsGraphic(r) {
+		return r
+	}
+	return -1
+}
+
+// Remove invisible characters from a string.
+func RemoveInvisible(text string) string {
+	return strings.Map(mapInvisible, text)
 }

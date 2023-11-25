@@ -8,6 +8,7 @@ import (
 	mdrender "research-toolkit/lib/md-render"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/chromedp/cdproto/accessibility"
 	"github.com/chromedp/cdproto/cdp"
@@ -16,8 +17,9 @@ import (
 )
 
 type Extractor struct {
-	ctx    context.Context
-	cancel func()
+	Timeout time.Duration
+	ctx     context.Context
+	cancel  func()
 }
 
 func NewExtractor() (Extractor, error) {
@@ -53,19 +55,23 @@ func NewExtractor() (Extractor, error) {
 	}
 
 	return Extractor{
-		ctx:    ctx,
-		cancel: cancel,
+		Timeout: 20 * time.Second,
+		ctx:     ctx,
+		cancel:  cancel,
 	}, nil
 }
 
 func (e Extractor) Extract(url *url.URL) ([]mdrender.Node, AXNode, error) {
-	currentCtx, cancel := chromedp.NewContext(e.ctx)
-	defer cancel()
+	currentCtx, cancelCurrent := chromedp.NewContext(e.ctx)
+	defer cancelCurrent()
+
+	withTimeout, cancelTimeout := context.WithTimeout(currentCtx, e.Timeout)
+	defer cancelTimeout()
 
 	axTree := AXNode{}
 	var mdTree []mdrender.Node
 	err := chromedp.Run(
-		currentCtx,
+		withTimeout,
 		chromedp.Navigate(url.String()),
 		chromedp.ActionFunc(func(pageCtx context.Context) error {
 			err := accessibility.Enable().Do(pageCtx)
@@ -79,7 +85,6 @@ func (e Extractor) Extract(url *url.URL) ([]mdrender.Node, AXNode, error) {
 			}
 
 			mdTree = MarkdownFromAXTree(pageCtx, axTree, url)
-
 			return nil
 		}),
 	)
@@ -110,6 +115,7 @@ type traversalState struct {
 	baseUrl        *url.URL
 	underMain      bool
 	underParagraph bool
+	underTable     bool
 	listItemDepth  int
 }
 
@@ -128,6 +134,23 @@ func convertMdFromAx(
 	nodes := []mdrender.Node{}
 
 	switch string(root.Role) {
+	case "RootWebArea":
+		header := strings.Trim(root.Name, " \t\n")
+		nodes = append(nodes, mdrender.Header{
+			Order: 1,
+			Content: mdrender.PlainText{
+				Content: header,
+			},
+		})
+	case "main":
+		childState.underMain = true
+	case "StaticText":
+		text := strings.Trim(root.Name, " \t\n")
+		return []mdrender.Node{
+			mdrender.PlainText{
+				Content: text,
+			},
+		}
 	case "heading":
 		children := []mdrender.Node{}
 		for _, child := range root.Children {
@@ -152,16 +175,11 @@ func convertMdFromAx(
 			}
 		}
 
-		elements := filterParagraphElements(children)
-		if len(elements) == 0 {
-			return []mdrender.Node{}
-		}
-
 		return []mdrender.Node{
 			mdrender.Header{
 				Order: order,
 				Content: mdrender.Paragraph{
-					Elements: elements,
+					Elements: filterParagraphElements(children),
 				},
 			},
 		}
@@ -172,7 +190,7 @@ func convertMdFromAx(
 			Do(pageCtx)
 		if err != nil {
 			slog.Warn("could not get DOM node", "id", root.DomNodeId, "err", err.Error())
-		} else if node.Name == "OL" {
+		} else if node.NodeName == "OL" {
 			listType = mdrender.LIST_ORDERED
 		}
 
@@ -188,9 +206,6 @@ func convertMdFromAx(
 				}
 			}
 		}
-		if len(children) == 0 {
-			return []mdrender.Node{}
-		}
 
 		return []mdrender.Node{
 			mdrender.List{
@@ -198,7 +213,7 @@ func convertMdFromAx(
 				Items: children,
 			},
 		}
-	case "paragraph", "note":
+	case "paragraph", "caption", "note", "listitem":
 		if state.underParagraph {
 			children := []mdrender.Node{}
 			for _, child := range root.Children {
@@ -219,20 +234,12 @@ func convertMdFromAx(
 			)
 		}
 
-		if len(children) == 0 {
-			return []mdrender.Node{}
-		}
-
 		return []mdrender.Node{
 			mdrender.Paragraph{
 				Elements: children,
 			},
 		}
 	case "code":
-		if len(root.Children) == 0 {
-			return []mdrender.Node{}
-		}
-
 		child := root.Children[0]
 		if child.Role != "StaticText" {
 			return []mdrender.Node{}
@@ -262,11 +269,6 @@ func convertMdFromAx(
 			href = node.AttributeValue("href")
 		}
 
-		elements := filterParagraphElements(children)
-		if len(elements) == 0 {
-			return []mdrender.Node{}
-		}
-
 		linkUrl := href
 		parsed, err := url.Parse(href)
 		if err != nil {
@@ -279,32 +281,35 @@ func convertMdFromAx(
 			mdrender.Link{
 				URL: linkUrl,
 				Title: mdrender.Paragraph{
-					Elements: elements,
+					Elements: filterParagraphElements(children),
 				},
 			},
 		}
-	case "StaticText":
-		text := strings.Trim(root.Name, " \t\n")
-		if text == "" {
-			return []mdrender.Node{}
+	case "table":
+		childState.underTable = true
+
+		table := [][]mdrender.CanBeDecorated{}
+		for _, row := range root.Children {
+			if row.Role != "row" {
+				continue
+			}
+
+			rowMd := []mdrender.CanBeDecorated{}
+			for _, cell := range row.Children {
+				cellNodes := convertMdFromAx(pageCtx, cell, childState)
+				elements := filterParagraphElements(cellNodes)
+				if len(elements) == 0 {
+					continue
+				}
+				rowMd = append(rowMd, mdrender.Paragraph{Elements: elements})
+			}
+
+			table = append(table, rowMd)
 		}
+
 		return []mdrender.Node{
-			mdrender.PlainText{
-				Content: text,
-			},
+			mdrender.Table{Rows: table},
 		}
-	case "RootWebArea":
-		header := strings.Trim(root.Name, " \t\n")
-		if header != "" {
-			nodes = append(nodes, mdrender.Header{
-				Order: 1,
-				Content: mdrender.PlainText{
-					Content: header,
-				},
-			})
-		}
-	case "main":
-		childState.underMain = true
 	}
 
 	for _, child := range root.Children {

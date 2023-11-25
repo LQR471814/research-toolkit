@@ -115,3 +115,9 @@ func (BlockCode) node() {}
 type HorizontalRule struct{}
 
 func (HorizontalRule) node() {}
+
+type Table struct {
+	Rows [][]CanBeDecorated
+}
+
+func (Table) node() {}

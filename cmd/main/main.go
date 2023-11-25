@@ -53,7 +53,7 @@ func main() {
 		}
 
 		_, err := f.Write([]byte(fmt.Sprintf(
-			"===== extracted %s\n%s\n",
+			"<hr>\nExtracted from: %s\n%s\n",
 			searchResults[i].String(),
 			text,
 		)))
