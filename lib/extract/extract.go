@@ -23,6 +23,8 @@ type Extractor struct {
 }
 
 func NewExtractor() (Extractor, error) {
+	os.Mkdir("debug", 0777)
+
 	dataTemp := "chrome-data"
 	err := os.RemoveAll(dataTemp)
 	if err != nil {

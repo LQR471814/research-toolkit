@@ -49,7 +49,7 @@ func getAccessibilityTree(pageCtx context.Context) (AXNode, error) {
 		return AXNode{}, err
 	}
 
-	err = os.WriteFile("cdp-tree.json", returns, 0777)
+	err = os.WriteFile("debug/cdp-tree.json", returns, 0777)
 	if err != nil {
 		return AXNode{}, err
 	}

@@ -14,6 +14,8 @@ import (
 )
 
 func main() {
+	os.Mkdir("results", 0777)
+
 	extractor, err := extract.NewExtractor()
 	if err != nil {
 		log.Fatal(err)
@@ -41,7 +43,7 @@ func main() {
 		return mdrender.Render(mdTree)
 	})
 
-	f, err := os.Create("text.txt")
+	f, err := os.Create("results/main.md")
 	if err != nil {
 		log.Fatal(err)
 	}

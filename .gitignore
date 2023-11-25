@@ -5,4 +5,5 @@ ublock
 *.log
 *.txt
 *.db
-extracted.md
+debug
+results

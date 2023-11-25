@@ -10,6 +10,8 @@ import (
 )
 
 func main() {
+	os.Mkdir("results", 0777)
+
 	extractor, err := extract.NewExtractor()
 	if err != nil {
 		log.Fatal(err)
@@ -29,7 +31,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = os.WriteFile("ax-tree.json", []byte(serializedAXTree), 0777)
+	err = os.WriteFile("debug/ax-tree.json", []byte(serializedAXTree), 0777)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -38,13 +40,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = os.WriteFile("md-tree.json", []byte(serializedMDTree), 0777)
+	err = os.WriteFile("debug/md-tree.json", []byte(serializedMDTree), 0777)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	serialized := mdrender.Render(mdTree)
-	err = os.WriteFile("extracted.md", []byte(serialized), 0777)
+	err = os.WriteFile("results/extracted.md", []byte(serialized), 0777)
 	if err != nil {
 		log.Fatal(err)
 	}
