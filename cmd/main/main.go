@@ -20,6 +20,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	extractor.Preprocess = extract.ExtractMain
 
 	fetch, err := getter.NewGetter("cache.db")
 	if err != nil {

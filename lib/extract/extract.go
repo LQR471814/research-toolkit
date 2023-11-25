@@ -17,9 +17,10 @@ import (
 )
 
 type Extractor struct {
-	Timeout time.Duration
-	ctx     context.Context
-	cancel  func()
+	Timeout    time.Duration
+	Preprocess func(AXNode) (AXNode, bool)
+	ctx        context.Context
+	cancel     func()
 }
 
 func NewExtractor() (Extractor, error) {
@@ -84,6 +85,13 @@ func (e Extractor) Extract(url *url.URL) ([]mdrender.Node, AXNode, error) {
 			axTree, err = getAccessibilityTree(pageCtx)
 			if err != nil {
 				return err
+			}
+
+			if e.Preprocess != nil {
+				newTree, ok := e.Preprocess(axTree)
+				if ok {
+					axTree = newTree
+				}
 			}
 
 			mdTree = MarkdownFromAXTree(pageCtx, axTree, url)

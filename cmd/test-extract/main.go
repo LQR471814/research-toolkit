@@ -16,6 +16,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	extractor.Preprocess = extract.ExtractMain
 
 	u, err := url.Parse("https://en.wikipedia.org/wiki/Polar_bear")
 	if err != nil {
