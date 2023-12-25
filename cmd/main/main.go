@@ -13,6 +13,8 @@ import (
 	"research-toolkit/lib/utils"
 )
 
+const SEARCH_TERM = "food wastage in restaurants and other corporate places"
+
 func main() {
 	os.Mkdir("results", 0777)
 
@@ -20,15 +22,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	extractor.Preprocess = extract.ExtractMain
 
 	fetch, err := getter.NewGetter("cache.db")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	client := google.NewClient(fetch)
-	searchResults, err := client.Search("polar bears", 2)
+	googleClient := google.NewClient(fetch)
+	searchResults, err := googleClient.Search(SEARCH_TERM, 2)
 	if err != nil {
 		log.Fatal(err)
 	}

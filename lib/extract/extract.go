@@ -45,6 +45,7 @@ func NewExtractor() (Extractor, error) {
 			chromedp.Flag("headless", false),
 			chromedp.Flag("blink-settings", "imagesEnabled=false"),
 			chromedp.Flag("disable-extensions", false),
+			chromedp.Flag("disable-remote-fonts", true),
 		)...,
 	)
 	ctx, cancel := chromedp.NewContext(allocatorCtx)
