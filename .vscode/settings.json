@@ -4,6 +4,9 @@
     "easyjson",
     "listitem",
     "mdrender",
-    "Preprocess"
+    "ollama",
+    "Preprocess",
+    "vectordb",
+    "weaviate"
   ]
 }

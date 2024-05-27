@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"log/slog"
@@ -11,6 +12,9 @@ import (
 	"research-toolkit/lib/google"
 	mdrender "research-toolkit/lib/md-render"
 	"research-toolkit/lib/utils"
+	"time"
+
+	"github.com/weaviate/weaviate-go-client/v4/weaviate"
 )
 
 const SEARCH_TERM = "food wastage in restaurants and other corporate places"
@@ -45,11 +49,19 @@ func main() {
 		return mdrender.Render(mdTree)
 	})
 
-	f, err := os.Create("results/main.md")
+	f, err := os.Create("results/retrieved.md")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer f.Close()
+
+	vectordb, err := weaviate.NewClient(weaviate.Config{
+		Host:   "localhost:8080",
+		Scheme: "http",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	for i, text := range parsed {
 		if text == "" {
@@ -61,6 +73,21 @@ func main() {
 			searchResults[i].String(),
 			text,
 		)))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+
+		_, err = vectordb.Data().
+			Creator().
+			WithClassName("Website").
+			WithProperties(map[string]string{
+				"url":     searchResults[i].String(),
+				"content": text,
+			}).
+			Do(ctx)
 		if err != nil {
 			log.Fatal(err)
 		}

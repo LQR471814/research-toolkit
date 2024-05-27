@@ -6,3 +6,4 @@ ublock
 *.db
 debug
 results
+.venv
